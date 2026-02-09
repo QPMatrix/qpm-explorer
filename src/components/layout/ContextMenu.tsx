@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactElement } from 'react'
 
 interface ContextMenuOption {
   label: string
-  action: () => void
+  action: () => void | Promise<void>
   danger?: boolean
 }
 
@@ -23,7 +23,7 @@ interface ContextMenuProps {
  * @param props.options - Menu options
  * @returns ContextMenu component
  */
-export function ContextMenu({ x, y, onClose, options }: ContextMenuProps): JSX.Element {
+export function ContextMenu({ x, y, onClose, options }: ContextMenuProps): ReactElement {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,8 +48,8 @@ export function ContextMenu({ x, y, onClose, options }: ContextMenuProps): JSX.E
           className={`w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground transition-colors ${
             opt.danger ? 'text-destructive hover:text-destructive' : ''
           }`}
-          onClick={() => {
-            opt.action()
+          onClick={async () => {
+            await opt.action()
             onClose()
           }}
         >

@@ -7,6 +7,13 @@ import { useExplorer } from './hooks/useExplorer'
 import { Loader2 } from 'lucide-react'
 import type { FileNode } from '@/types'
 import { ReactNode } from 'react'
+import { ask, message } from '@tauri-apps/plugin-dialog'
+
+interface ContextMenuOption {
+  label: string
+  action: () => void | Promise<void>
+  danger?: boolean
+}
 
 /**
  * Main explorer view component
@@ -38,41 +45,90 @@ export function ExplorerView():ReactNode {
   }
 
   const handleDelete = async (item: FileNode): Promise<void> => {
-    if (confirm(`Delete ${item.name}?`)) {
-      await deleteItem(item.name)
+    const confirmed = await ask(`Are you sure you want to delete "${item.name}"?`, {
+      title: 'Confirm Delete',
+      kind: 'warning',
+    })
+    if (confirmed) {
+      try {
+        await deleteItem(item.name)
+      } catch (err) {
+        await message(`Failed to delete: ${err}`, {
+          title: 'Error',
+          kind: 'error',
+        })
+      }
     }
   }
 
   const handleRename = async (item: FileNode): Promise<void> => {
-    const newName = prompt('New name:', item.name)
+    const newName = prompt(`Enter new name for "${item.name}":`, item.name)
     if (newName && newName !== item.name) {
-      await renameItem({ oldName: item.name, newName })
+      try {
+        await renameItem({ oldName: item.name, newName })
+      } catch (err) {
+        await message(`Failed to rename: ${err}`, {
+          title: 'Error',
+          kind: 'error',
+        })
+      }
     }
   }
 
-  const getContextMenuOptions = () => {
+  const getContextMenuOptions = (): ContextMenuOption[] => {
     if (contextMenu?.item) {
       const item = contextMenu.item
       return [
-        { label: 'Open', action: () => item.is_dir && openFolder(item.name) },
-        { label: 'Rename', action: () => handleRename(item) },
-        { label: 'Delete', action: () => handleDelete(item), danger: true },
-      ].filter((opt) => opt.action)
+        ...(item.is_dir ? [{
+          label: 'Open',
+          action: async () => {
+            await openFolder(item.name)
+          }
+        }] : []),
+        { label: 'Rename', action: async () => await handleRename(item) },
+        { label: 'Delete', action: async() => await handleDelete(item), danger: true },
+      ]
     }
 
     return [
       {
         label: 'New Folder',
-        action: () => {
-          const name = prompt('Folder name:')
-          if (name) createFolder(name)
+        action: async () => {
+          const name = prompt('Enter folder name:')
+          console.log('Create folder - got name:', name)
+          if (name) {
+            try {
+              console.log('Calling createFolder mutation...')
+              await createFolder(name)
+              console.log('Folder created successfully')
+            } catch (err) {
+              console.error('Failed to create folder:', err)
+              await message(`Failed to create folder: ${err}`, {
+                title: 'Error',
+                kind: 'error',
+              })
+            }
+          }
         },
       },
       {
         label: 'New File',
-        action: () => {
-          const name = prompt('File name:')
-          if (name) createFile(name)
+        action: async () => {
+          const name = prompt('Enter file name:')
+          console.log('Create file - got name:', name)
+          if (name) {
+            try {
+              console.log('Calling createFile mutation...')
+              await createFile(name)
+              console.log('File created successfully')
+            } catch (err) {
+              console.error('Failed to create file:', err)
+              await message(`Failed to create file: ${err}`, {
+                title: 'Error',
+                kind: 'error',
+              })
+            }
+          }
         },
       },
       { label: 'Refresh', action: refresh },
