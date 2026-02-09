@@ -3,16 +3,23 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { PathBar } from '@/components/explorer/PathBar'
 import { FileGrid } from '@/components/explorer/FileGrid'
 import { ContextMenu } from '@/components/layout/ContextMenu'
+import { InputDialog } from '@/components/layout/InputDialog'
 import { useExplorer } from './hooks/useExplorer'
 import { Loader2 } from 'lucide-react'
 import type { FileNode } from '@/types'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
 import { ask, message } from '@tauri-apps/plugin-dialog'
 
 interface ContextMenuOption {
   label: string
   action: () => void | Promise<void>
   danger?: boolean
+}
+
+interface InputDialogState {
+  title: string
+  defaultValue?: string
+  onConfirm: (value: string) => void
 }
 
 /**
@@ -36,6 +43,8 @@ export function ExplorerView():ReactNode {
     navigateToPath,
     refresh,
   } = useExplorer()
+
+  const [inputDialog, setInputDialog] = useState<InputDialogState | null>(null)
 
   const closeContextMenu = (): void => setContextMenu(null)
 
@@ -62,17 +71,23 @@ export function ExplorerView():ReactNode {
   }
 
   const handleRename = async (item: FileNode): Promise<void> => {
-    const newName = prompt(`Enter new name for "${item.name}":`, item.name)
-    if (newName && newName !== item.name) {
-      try {
-        await renameItem({ oldName: item.name, newName })
-      } catch (err) {
-        await message(`Failed to rename: ${err}`, {
-          title: 'Error',
-          kind: 'error',
-        })
-      }
-    }
+    setInputDialog({
+      title: 'Rename',
+      defaultValue: item.name,
+      onConfirm: async (newName: string) => {
+        setInputDialog(null)
+        if (newName && newName !== item.name) {
+          try {
+            await renameItem({ oldName: item.name, newName })
+          } catch (err) {
+            await message(`Failed to rename: ${err}`, {
+              title: 'Error',
+              kind: 'error',
+            })
+          }
+        }
+      },
+    })
   }
 
   const getContextMenuOptions = (): ContextMenuOption[] => {
@@ -85,7 +100,7 @@ export function ExplorerView():ReactNode {
             await openFolder(item.name)
           }
         }] : []),
-        { label: 'Rename', action: async () => await handleRename(item) },
+        { label: 'Rename', action: () => handleRename(item) },
         { label: 'Delete', action: async() => await handleDelete(item), danger: true },
       ]
     }
@@ -93,42 +108,48 @@ export function ExplorerView():ReactNode {
     return [
       {
         label: 'New Folder',
-        action: async () => {
-          const name = prompt('Enter folder name:')
-          console.log('Create folder - got name:', name)
-          if (name) {
-            try {
-              console.log('Calling createFolder mutation...')
-              await createFolder(name)
-              console.log('Folder created successfully')
-            } catch (err) {
-              console.error('Failed to create folder:', err)
-              await message(`Failed to create folder: ${err}`, {
-                title: 'Error',
-                kind: 'error',
-              })
-            }
-          }
+        action: () => {
+          setInputDialog({
+            title: 'New Folder',
+            onConfirm: async (name: string) => {
+              setInputDialog(null)
+              console.log('Create folder - got name:', name)
+              try {
+                console.log('Calling createFolder mutation...')
+                await createFolder(name)
+                console.log('Folder created successfully')
+              } catch (err) {
+                console.error('Failed to create folder:', err)
+                await message(`Failed to create folder: ${err}`, {
+                  title: 'Error',
+                  kind: 'error',
+                })
+              }
+            },
+          })
         },
       },
       {
         label: 'New File',
-        action: async () => {
-          const name = prompt('Enter file name:')
-          console.log('Create file - got name:', name)
-          if (name) {
-            try {
-              console.log('Calling createFile mutation...')
-              await createFile(name)
-              console.log('File created successfully')
-            } catch (err) {
-              console.error('Failed to create file:', err)
-              await message(`Failed to create file: ${err}`, {
-                title: 'Error',
-                kind: 'error',
-              })
-            }
-          }
+        action: () => {
+          setInputDialog({
+            title: 'New File',
+            onConfirm: async (name: string) => {
+              setInputDialog(null)
+              console.log('Create file - got name:', name)
+              try {
+                console.log('Calling createFile mutation...')
+                await createFile(name)
+                console.log('File created successfully')
+              } catch (err) {
+                console.error('Failed to create file:', err)
+                await message(`Failed to create file: ${err}`, {
+                  title: 'Error',
+                  kind: 'error',
+                })
+              }
+            },
+          })
         },
       },
       { label: 'Refresh', action: refresh },
@@ -167,6 +188,15 @@ export function ExplorerView():ReactNode {
 
         {contextMenu && (
           <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={closeContextMenu} options={getContextMenuOptions()} />
+        )}
+
+        {inputDialog && (
+          <InputDialog
+            title={inputDialog.title}
+            defaultValue={inputDialog.defaultValue}
+            onConfirm={inputDialog.onConfirm}
+            onCancel={() => setInputDialog(null)}
+          />
         )}
       </div>
     </Layout>
