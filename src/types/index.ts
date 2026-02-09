@@ -11,3 +11,16 @@ export interface ExplorerView {
   can_go_forward: boolean
   can_go_up: boolean
 }
+
+export interface SystemPath {
+  label: string
+  path: string
+  icon: string
+}
+
+export interface Favorite {
+  id: number
+  path: string
+  label: string
+  icon: string
+}
