@@ -4,6 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::State;
 
+// ... (existing imports and functions)
+
 /// Reads the directory at `path` and returns an ExplorerView.
 ///
 /// # Arguments
@@ -47,15 +49,21 @@ pub fn get_current_view(state: State<AppState>) -> Result<ExplorerView, AppError
     read_directory(&path)
 }
 
-/// Open a folder by name (Relative to current path).
+/// Open a folder by name (Relative to current path) OR absolute path.
 ///
 /// # Arguments
 ///
-/// * `name` - The name of the folder to open.
+/// * `name` - The name of the folder to open or absolute path.
 #[tauri::command]
 pub fn open_folder(name: String, state: State<AppState>) -> Result<ExplorerView, AppError> {
     let mut path = state.current_dir.lock().unwrap();
-    let new_path = path.join(name);
+    
+    // Check if it's an absolute path
+    let new_path = if std::path::Path::new(&name).is_absolute() {
+        PathBuf::from(&name)
+    } else {
+        path.join(&name)
+    };
 
     if new_path.is_dir() {
         *path = new_path;
@@ -121,6 +129,22 @@ pub fn create_file(name: String, state: State<AppState>) -> Result<ExplorerView,
     let target = path.join(name);
 
     fs::File::create(target)?;
+    read_directory(&path)
+}
+
+/// Rename an item in the current directory.
+/// 
+/// # Arguments
+/// 
+/// * `old_name` - The current name of the item.
+/// * `new_name` - The new name for the item.
+#[tauri::command]
+pub fn rename_item(old_name: String, new_name: String, state: State<AppState>) -> Result<ExplorerView, AppError> {
+    let path = state.current_dir.lock().unwrap();
+    let source = path.join(old_name);
+    let target = path.join(new_name);
+
+    fs::rename(source, target)?;
     read_directory(&path)
 }
 

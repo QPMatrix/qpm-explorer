@@ -1,6 +1,7 @@
 import React from 'react'
 import { FileNode } from '../../types'
 import { Folder, File, FileCode, FileImage, FileText, FileVideo, Music } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface FileItemProps {
   item: FileNode
@@ -8,12 +9,10 @@ interface FileItemProps {
   onContextMenu: (e: React.MouseEvent, item: FileNode) => void
 }
 
-/**
- * Component representing a single file or folder.
- */
 export const FileItem: React.FC<FileItemProps> = ({ item, onOpen, onContextMenu }) => {
   const getIcon = () => {
-    if (item.is_dir) return <Folder className="icon folder-icon" />
+    const iconClass = "w-12 h-12"
+    if (item.is_dir) return <Folder className={cn(iconClass, "text-yellow-400 fill-yellow-400")} />
     
     const ext = item.name.split('.').pop()?.toLowerCase()
     
@@ -22,16 +21,16 @@ export const FileItem: React.FC<FileItemProps> = ({ item, onOpen, onContextMenu 
       case 'jpg':
       case 'jpeg':
       case 'svg':
-        return <FileImage className="icon image-icon" />
+        return <FileImage className={cn(iconClass, "text-yellow-600")} />
       case 'mp4':
       case 'mov':
-        return <FileVideo className="icon video-icon" />
+        return <FileVideo className={cn(iconClass, "text-orange-500")} />
       case 'mp3':
       case 'wav':
-        return <Music className="icon music-icon" />
+        return <Music className={cn(iconClass, "text-purple-600")} />
       case 'txt':
       case 'md':
-        return <FileText className="icon text-icon" />
+        return <FileText className={cn(iconClass, "text-gray-500")} />
       case 'js':
       case 'ts':
       case 'rs':
@@ -39,35 +38,27 @@ export const FileItem: React.FC<FileItemProps> = ({ item, onOpen, onContextMenu 
       case 'jsx':
       case 'json':
       case 'toml':
-        return <FileCode className="icon code-icon" />
+        return <FileCode className={cn(iconClass, "text-blue-500")} />
       default:
-        return <File className="icon file-icon" />
+        return <File className={cn(iconClass, "text-gray-400")} />
     }
   }
 
   return (
     <div 
-      className="file-item"
+      className={cn(
+        "flex flex-col items-center p-3 rounded-md cursor-pointer transition-colors border border-transparent",
+        "hover:bg-accent hover:text-accent-foreground active:scale-95 duration-100"
+      )}
       onDoubleClick={() => onOpen(item)}
       onContextMenu={(e) => onContextMenu(e, item)}
     >
-      <div className="file-icon-wrapper">
+      <div className="mb-2">
         {getIcon()}
       </div>
-      <div className="file-name" title={item.name}>
+      <div className="text-xs text-center break-all line-clamp-2 w-full leading-tight">
         {item.name}
-      </div>
-      <div className="file-size">
-        {item.is_dir ? '-' : formatSize(item.size)}
       </div>
     </div>
   )
-}
-
-function formatSize(bytes: number) {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }

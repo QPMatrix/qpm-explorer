@@ -29,6 +29,7 @@ pub fn run() {
             commands::io::delete_item,
             commands::io::create_folder,
             commands::io::create_file,
+            commands::io::rename_item,
             commands::io::search_files
         ])
         .run(tauri::generate_context!())

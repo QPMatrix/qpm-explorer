@@ -1,102 +1,63 @@
-import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { COMMANDS } from '../constants/commands'
 import { ExplorerView } from '../types'
 
-/**
- * Hook to manage file system operations.
- * 
- * @returns {Object} File system operations and state.
- */
 export const useFileSystem = () => {
-  const [view, setView] = useState<ExplorerView | null>(null)
-  const [error, setError] = useState<string>("")
-  const [loading, setLoading] = useState<boolean>(true)
+  const queryClient = useQueryClient()
 
-  const fetchView = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await invoke<ExplorerView>('get_current_view')
-      setView(data)
-      setError("")
-    } catch (err: any) {
-      console.error(err)
-      setError(err.toString())
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const { data: view, isLoading, error } = useQuery({
+    queryKey: ['explorer-view'],
+    queryFn: () => invoke<ExplorerView>(COMMANDS.GET_CURRENT_VIEW),
+  })
 
-  useEffect(() => {
-    fetchView()
-  }, [fetchView])
+  // Mutations
+  const openFolderMutation = useMutation({
+    mutationFn: (name: string) => invoke<ExplorerView>(COMMANDS.OPEN_FOLDER, { name }),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const openFolder = async (name: string) => {
-    try {
-      const data = await invoke<ExplorerView>('open_folder', { name })
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    }
-  }
+  const goBackMutation = useMutation({
+    mutationFn: () => invoke<ExplorerView>(COMMANDS.GO_BACK),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const goBack = async () => {
-    try {
-      const data = await invoke<ExplorerView>('go_back')
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    }
-  }
+  const deleteItemMutation = useMutation({
+    mutationFn: (name: string) => invoke<ExplorerView>(COMMANDS.DELETE_ITEM, { name }),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const deleteItem = async (name: string) => {
-    try {
-      const data = await invoke<ExplorerView>('delete_item', { name })
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    }
-  }
+  const createFolderMutation = useMutation({
+    mutationFn: (name: string) => invoke<ExplorerView>(COMMANDS.CREATE_FOLDER, { name }),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const createFolder = async (name: string) => {
-    try {
-      const data = await invoke<ExplorerView>('create_folder', { name })
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    }
-  }
+  const createFileMutation = useMutation({
+    mutationFn: (name: string) => invoke<ExplorerView>(COMMANDS.CREATE_FILE, { name }),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const createFile = async (name: string) => {
-    try {
-      const data = await invoke<ExplorerView>('create_file', { name })
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    }
-  }
+  const renameItemMutation = useMutation({
+    mutationFn: ({ oldName, newName }: { oldName: string; newName: string }) => 
+      invoke<ExplorerView>(COMMANDS.RENAME_ITEM, { oldName, newName }),
+    onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
-  const searchFiles = async (query: string) => {
-    try {
-      setLoading(true)
-      const data = await invoke<ExplorerView>('search_files', { query })
-      setView(data)
-    } catch (err: any) {
-      setError(err.toString())
-    } finally {
-      setLoading(false)
-    }
-  }
+  const navigateToPathMutation = useMutation({
+      mutationFn: (path: string) => invoke<ExplorerView>(COMMANDS.OPEN_FOLDER, { name: path }),
+      onSuccess: (data: ExplorerView) => queryClient.setQueryData(['explorer-view'], data),
+  })
 
   return {
     view,
+    isLoading,
     error,
-    loading,
-    refresh: fetchView,
-    openFolder,
-    goBack,
-    deleteItem,
-    createFolder,
-    createFile,
-    searchFiles
+    openFolder: openFolderMutation.mutateAsync,
+    goBack: goBackMutation.mutateAsync,
+    deleteItem: deleteItemMutation.mutateAsync,
+    createFolder: createFolderMutation.mutateAsync,
+    createFile: createFileMutation.mutateAsync,
+    renameItem: renameItemMutation.mutateAsync,
+    navigateToPath: navigateToPathMutation.mutateAsync
   }
 }
